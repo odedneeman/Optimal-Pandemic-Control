@@ -149,8 +149,8 @@ xList(:,1) = x0;
 trueNList = zeros(1, finalStep);
 nList = zeros(1, finalStep);
 nList(1) = referenceNList(1);
-controllerKp = 500;
-controllerKd = 80000000;
+controllerKp = 10000;
+controllerKd = 50000000;
 controllerKi = 1;
 lastError = 0;
 last2Error = 0;
@@ -219,22 +219,31 @@ controlledCost = costFunctionIntegral(xList(:,1:costFinalStep), betaList(1:costF
 disp("Cost for the controlled model (death toll) = " + controlledCost);
 
 
-% Tracking the effective R
+% approximation of the input with average
 xList = zeros(systemDimension, finalStep);
 betaList = zeros(1, finalStep);
 xList(:,1) = x0;
 trueNList = zeros(1, finalStep);
-nList = zeros(1, finalStep);
-nList(1) = referenceNList(1);
-controllerKp = 0.02;
-controllerKd = 0.05;
-controllerKi = 0.01;
-lastError = 0;
-last2Error = 0;
-dList = zeros(1, finalStep);
-pList = zeros(1, finalStep);
-iList = zeros(1, finalStep);
-errorList = zeros(1, finalStep);
+% calculate the average of the input
+for curBlock = 1 : 1400 : finalStep
+    blockSum = 0;
+    blockLength = 0;
+    for curIndex = 0 : 1399
+        if curBlock + curIndex > finalStep
+            break
+        end
+        blockLength = blockLength + 1;
+        blockSum = blockSum + nList(curBlock + curIndex);
+    end
+    blockAverage = blockSum / blockLength;
+    for curIndex = 0 : 1399
+        if curBlock + curIndex > finalStep
+            break
+        end
+        nList(curBlock + curIndex) = blockAverage;
+    end
+end
+% run simulation
 for curStep = 1 :finalStep
     curTime = (curStep - 1) * simulationDt;
     curState = xList(:, curStep);
@@ -254,40 +263,17 @@ for curStep = 1 :finalStep
         curN = minN;
     end
     trueNList(curStep) = curN;
-
     curBeta = getBetaFromN(curN, curTime);
     betaList(curStep) = curBeta;
     curDynamics = seirdDynamics(curState, curBeta);
     nextState = curState + curDynamics * simulationDt;
-    
-    %curDeathToll = curState(5);
-    %curDeathTollRef = referenceDeathToll(curStep);
-    %outputError = curDeathTollRef - curDeathToll;
-    curSusceptible = curState(1);
-    curEffectiveR = curBeta / gamma * curSusceptible;
-    curSusceptibleRef = referenceSusceptible(curStep);
-    curBetaRef = referenceBetaList(curStep);
-    curEffectiveRRef = curBetaRef / gamma * curSusceptibleRef;
-
-    outputError = curEffectiveRRef - curEffectiveR;
-    errorList(curStep) = outputError;
-    du_p = controllerKp * (outputError - lastError);
-    du_d = controllerKd * ((outputError - lastError) - (lastError - last2Error));
-    du_i = controllerKi * (outputError);
-    du = du_p + du_d + du_i;
-    pList(curStep) = du_p;
-    dList(curStep) = du_d;
-    iList(curStep) = du_i;
-    last2Error = lastError;
-    lastError = outputError;
     if curStep < finalStep
         xList(:, curStep + 1) = nextState;
-        nList(curStep + 1) = nList(curStep) + du;
         nList(curStep + 1) = min(maxN, nList(curStep +1));
     end
 end
-figure(5);
-plot(timeList, pList);
+figure(1);
+plot(timeList, xList(5, :) * 100000);
 figure(2);
 plot(timeList, trueNList);
 figure(4);
@@ -295,23 +281,24 @@ plot(timeList, xList(1,:) .* betaList / gamma);
 xlabel("Time (days)")
 ylabel("Effective R value")
 
+discreteControlCost = costFunctionIntegral(xList(:,1:costFinalStep), betaList(1:costFinalStep), simulationDt);
+disp("Cost function with discrete approximation control = " + string(discreteControlCost));
 % add the reference optimal value to the figure
-effectiveRControlCost = costFunctionIntegral(xList(:,1:costFinalStep), betaList(1:costFinalStep), simulationDt);
-disp("Cost function with effective R control = " + string(effectiveRControlCost));
+
 load("C:\Users\Klaus\Documents\Graduate\OptimizationRefactored\ContinuousTime\ContinuousSensitivityResultsWithEndo\beta_N_" + string(betaN) + ".mat")
 figure(1);
 plot(timeList, xList(5,:) * 100000);
 legend(["Real system betaN =" + string(betaN), "Original system betaN = 0.53", "Controlled system betaN =" + string(betaN), ...
-    "Optimal solution for betaN =" + string(betaN)])
+   "Controlled system (discrete, death toll), betaN =" + string(betaN), "Optimal solution for betaN =" + string(betaN)])
 figure(2);
 plot(timeList, nList);
 legend(["N for real system betaN =" + string(betaN), "N for original system betaN = 0.53", "Controlled system (death toll) betaN =" + string(betaN), ...
-    "Controlled system (effective R) = " + string(betaN), "Optimal N for betaN =" + string(betaN)])
+    "Controlled system (discrete, death toll), betaN = " + string(betaN), "Optimal N for betaN =" + string(betaN)])
 figure(4);
 plot(timeList, betaList .* xList(1,:) / gamma);
 legend(["Effective R for real system betaN = " + string(betaN), ...
     "Effective R for original system betaN = 0.53", ...
-    "Controlled system betaN =" + string(betaN), ...
+    "Controlled system (discrete, death toll), betaN" + string(betaN), ...
     "Optimal N for betaN =" + string(betaN)])
 
 
