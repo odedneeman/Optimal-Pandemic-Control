@@ -83,7 +83,7 @@ feedbackNList = zeros(1, finalStep);
 feedbackNList(1) = referenceNList(1);
 
 % change the parameter
-betaN = 0.65;
+betaN = 0.45;
 
 % first simulate the system 
 
@@ -186,9 +186,7 @@ for curStep = 1 :finalStep
     du_d = controllerKd * ((outputError - lastError) - (lastError - last2Error));
     du_i = controllerKi * (outputError);
     du = du_p + du_d + du_i;
-    pList(curStep) = du_p;
-    dList(curStep) = du_d;
-    iList(curStep) = du_i;
+    
     last2Error = lastError;
     lastError = outputError;
     if curStep < finalStep
@@ -207,14 +205,7 @@ plot(timeList, trueNList)
 legend(["N for real system betaN =" + string(betaN), "N for original system betaN = 0.53", "Controlled system (death toll) betaN =" + string(betaN)])
 xlabel("Time (days)")
 ylabel("Actual employment rate")
-figure(3);
-plot(timeList, pList)
-hold on;
-plot(timeList, dList)
-plot(timeList, iList)
-xlabel("Time (days)")
-ylabel("Control input")
-legend(["Proportional input", "Derivative input", "Integral input"])
+
 controlledCost = costFunctionIntegral(xList(:,1:costFinalStep), betaList(1:costFinalStep), simulationDt);
 disp("Cost for the controlled model (death toll) = " + controlledCost);
 
@@ -234,8 +225,8 @@ discreteControlPeriodStep = fix(discreteControlPeriod / simulationDt);
 for curIndex = 1 : discreteControlPeriodStep
     nList(curIndex) = referenceNList(1);
 end
-controllerKpDiscrete = 1;
-controllerKdDiscrete = 20000;
+controllerKpDiscrete = 2000;
+controllerKdDiscrete = 8000;
 controllerKiDiscrete = 0;
 lastError = 0;
 last2Error = 0;
@@ -274,6 +265,10 @@ for curStep = 1 :finalStep
         du_i = controllerKiDiscrete * (outputError);
         du = du_p + du_d + du_i;
 
+        pList(curStep) = du_p;
+        dList(curStep) = du_d;
+        iList(curStep) = du_i;
+
         last2Error = lastError;
         lastError = outputError;
         nextN = nList(curStep) + du;
@@ -295,6 +290,14 @@ figure(1);
 plot(timeList, xList(5, :) * 100000);
 figure(2);
 plot(timeList, trueNList);
+figure(3);
+plot(timeList, pList)
+hold on;
+plot(timeList, dList)
+plot(timeList, iList)
+xlabel("Time (days)")
+ylabel("Control input")
+legend(["Proportional input", "Derivative input", "Integral input"])
 figure(4);
 plot(timeList, xList(1,:) .* betaList / gamma);
 xlabel("Time (days)")
