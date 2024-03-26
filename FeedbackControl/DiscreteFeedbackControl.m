@@ -226,8 +226,8 @@ for curIndex = 1 : discreteControlPeriodStep
     nList(curIndex) = referenceNList(1);
 end
 controllerKpDiscrete = 2000;
-controllerKdDiscrete = 8000;
-controllerKiDiscrete = 0;
+controllerKdDiscrete = 5000;
+controllerKiDiscrete = 1;
 lastError = 0;
 last2Error = 0;
 
@@ -291,10 +291,10 @@ plot(timeList, xList(5, :) * 100000);
 figure(2);
 plot(timeList, trueNList);
 figure(3);
-plot(timeList, pList)
+stem(pList(pList~=0))
 hold on;
-plot(timeList, dList)
-plot(timeList, iList)
+stem(dList(pList~=0))
+stem(iList(pList~=0))
 xlabel("Time (days)")
 ylabel("Control input")
 legend(["Proportional input", "Derivative input", "Integral input"])
