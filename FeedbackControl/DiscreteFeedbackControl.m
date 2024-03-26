@@ -223,26 +223,23 @@ disp("Cost for the controlled model (death toll) = " + controlledCost);
 xList = zeros(systemDimension, finalStep);
 betaList = zeros(1, finalStep);
 xList(:,1) = x0;
+nList = zeros(1, finalStep);
 trueNList = zeros(1, finalStep);
-% calculate the average of the input
-for curBlock = 1 : 1400 : finalStep
-    blockSum = 0;
-    blockLength = 0;
-    for curIndex = 0 : 1399
-        if curBlock + curIndex > finalStep
-            break
-        end
-        blockLength = blockLength + 1;
-        blockSum = blockSum + nList(curBlock + curIndex);
-    end
-    blockAverage = blockSum / blockLength;
-    for curIndex = 0 : 1399
-        if curBlock + curIndex > finalStep
-            break
-        end
-        nList(curBlock + curIndex) = blockAverage;
-    end
+
+
+discreteControlPeriod = 14; % control period, in days
+discreteControlPeriodStep = fix(discreteControlPeriod / simulationDt);
+
+% initialize for the first control period
+for curIndex = 1 : discreteControlPeriodStep
+    nList(curIndex) = referenceNList(1);
 end
+controllerKpDiscrete = 1;
+controllerKdDiscrete = 20000;
+controllerKiDiscrete = 0;
+lastError = 0;
+last2Error = 0;
+
 % run simulation
 for curStep = 1 :finalStep
     curTime = (curStep - 1) * simulationDt;
@@ -267,9 +264,31 @@ for curStep = 1 :finalStep
     betaList(curStep) = curBeta;
     curDynamics = seirdDynamics(curState, curBeta);
     nextState = curState + curDynamics * simulationDt;
+    if mod(curStep, discreteControlPeriodStep) == 0
+        curDeathToll = curState(5);
+        curDeathTollRef = referenceDeathToll(curStep);
+        outputError = curDeathTollRef - curDeathToll;
+
+        du_p = controllerKpDiscrete * (outputError - lastError);
+        du_d = controllerKdDiscrete * ((outputError - lastError) - (lastError - last2Error));
+        du_i = controllerKiDiscrete * (outputError);
+        du = du_p + du_d + du_i;
+
+        last2Error = lastError;
+        lastError = outputError;
+        nextN = nList(curStep) + du;
+        nextN = max(minN, nextN);
+        nextN = min(maxN, nextN);
+        for nextIndex = 0 : discreteControlPeriodStep
+            if curStep + nextIndex > finalStep
+                break;
+            end
+            nList(curStep + nextIndex) = nextN;
+        end
+    end
+
     if curStep < finalStep
         xList(:, curStep + 1) = nextState;
-        nList(curStep + 1) = min(maxN, nList(curStep +1));
     end
 end
 figure(1);
@@ -282,7 +301,7 @@ xlabel("Time (days)")
 ylabel("Effective R value")
 
 discreteControlCost = costFunctionIntegral(xList(:,1:costFinalStep), betaList(1:costFinalStep), simulationDt);
-disp("Cost function with discrete approximation control = " + string(discreteControlCost));
+disp("Cost function with discrete control = " + string(discreteControlCost));
 % add the reference optimal value to the figure
 
 load("C:\Users\Klaus\Documents\Graduate\OptimizationRefactored\ContinuousTime\ContinuousSensitivityResultsWithEndo\beta_N_" + string(betaN) + ".mat")
@@ -299,6 +318,6 @@ plot(timeList, betaList .* xList(1,:) / gamma);
 legend(["Effective R for real system betaN = " + string(betaN), ...
     "Effective R for original system betaN = 0.53", ...
     "Controlled system (discrete, death toll), betaN" + string(betaN), ...
-    "Optimal N for betaN =" + string(betaN)])
+    "Optimal effective R for betaN =" + string(betaN)])
 
 
