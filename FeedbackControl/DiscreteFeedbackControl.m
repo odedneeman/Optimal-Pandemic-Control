@@ -150,7 +150,7 @@ trueNList = zeros(1, finalStep);
 nList = zeros(1, finalStep);
 nList(1) = referenceNList(1);
 controllerKp = 10000;
-controllerKd = 50000000;
+controllerKd = 80000000;
 controllerKi = 1;
 lastError = 0;
 last2Error = 0;
@@ -227,7 +227,7 @@ for curIndex = 1 : discreteControlPeriodStep
 end
 controllerKpDiscrete = 2000;
 controllerKdDiscrete = 5000;
-controllerKiDiscrete = 1;
+controllerKiDiscrete = 0;
 lastError = 0;
 last2Error = 0;
 
@@ -264,13 +264,16 @@ for curStep = 1 :finalStep
         du_d = controllerKdDiscrete * ((outputError - lastError) - (lastError - last2Error));
         du_i = controllerKiDiscrete * (outputError);
         du = du_p + du_d + du_i;
+        if abs(du) < 0.05
+            du = 0;
+        else
+            pList(curStep) = du_p;
+            dList(curStep) = du_d;
+            iList(curStep) = du_i;
 
-        pList(curStep) = du_p;
-        dList(curStep) = du_d;
-        iList(curStep) = du_i;
-
-        last2Error = lastError;
-        lastError = outputError;
+            last2Error = lastError;
+            lastError = outputError;
+        end
         nextN = nList(curStep) + du;
         nextN = max(minN, nextN);
         nextN = min(maxN, nextN);
@@ -307,7 +310,7 @@ discreteControlCost = costFunctionIntegral(xList(:,1:costFinalStep), betaList(1:
 disp("Cost function with discrete control = " + string(discreteControlCost));
 % add the reference optimal value to the figure
 
-load("C:\Users\Klaus\Documents\Graduate\OptimizationRefactored\ContinuousTime\ContinuousSensitivityResultsWithEndo\beta_N_" + string(betaN) + ".mat")
+load("..\ContinuousTime\ContinuousSensitivityResultsWithEndo\beta_N_" + string(betaN) + ".mat")
 figure(1);
 plot(timeList, xList(5,:) * 100000);
 legend(["Real system betaN =" + string(betaN), "Original system betaN = 0.53", "Controlled system betaN =" + string(betaN), ...
