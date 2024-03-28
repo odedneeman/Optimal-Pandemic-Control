@@ -218,16 +218,16 @@ nList = zeros(1, finalStep);
 trueNList = zeros(1, finalStep);
 
 
-discreteControlPeriod = 14; % control period, in days
+discreteControlPeriod = 1; % control period, in days
 discreteControlPeriodStep = fix(discreteControlPeriod / simulationDt);
 
 % initialize for the first control period
 for curIndex = 1 : discreteControlPeriodStep
     nList(curIndex) = referenceNList(1);
 end
-controllerKpDiscrete = 2000;
-controllerKdDiscrete = 5000;
-controllerKiDiscrete = 0;
+controllerKpDiscrete = 10000;
+controllerKdDiscrete = 300000;
+controllerKiDiscrete = 1;
 lastError = 0;
 last2Error = 0;
 
@@ -264,16 +264,16 @@ for curStep = 1 :finalStep
         du_d = controllerKdDiscrete * ((outputError - lastError) - (lastError - last2Error));
         du_i = controllerKiDiscrete * (outputError);
         du = du_p + du_d + du_i;
-        if abs(du) < 0.05
-            du = 0;
-        else
+        %if abs(du) < 0.05
+        %    du = 0;
+        %else
             pList(curStep) = du_p;
             dList(curStep) = du_d;
             iList(curStep) = du_i;
 
             last2Error = lastError;
             lastError = outputError;
-        end
+        %end
         nextN = nList(curStep) + du;
         nextN = max(minN, nextN);
         nextN = min(maxN, nextN);
