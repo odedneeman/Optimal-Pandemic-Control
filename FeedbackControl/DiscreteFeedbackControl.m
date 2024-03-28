@@ -215,6 +215,7 @@ xList = zeros(systemDimension, finalStep);
 betaList = zeros(1, finalStep);
 xList(:,1) = x0;
 nList = zeros(1, finalStep);
+pidNList = zeros(1, finalStep);
 trueNList = zeros(1, finalStep);
 
 
@@ -224,13 +225,18 @@ discreteControlPeriodStep = fix(discreteControlPeriod / simulationDt);
 % initialize for the first control period
 for curIndex = 1 : discreteControlPeriodStep
     nList(curIndex) = referenceNList(1);
+    pidNList(curIndex) = referenceNList(1);
 end
-controllerKpDiscrete = 10000;
-controllerKdDiscrete = 300000;
+controllerKpDiscrete = 1000;%10000;
+controllerKdDiscrete = 300000;%300000;
 controllerKiDiscrete = 1;
 lastError = 0;
 last2Error = 0;
 
+errorThreshold = 0.000008;
+inputThreshold = 0.05; 
+dwellThreshold = 14;
+policyChangeList = 0;
 % run simulation
 for curStep = 1 :finalStep
     curTime = (curStep - 1) * simulationDt;
@@ -264,31 +270,49 @@ for curStep = 1 :finalStep
         du_d = controllerKdDiscrete * ((outputError - lastError) - (lastError - last2Error));
         du_i = controllerKiDiscrete * (outputError);
         du = du_p + du_d + du_i;
-        %if abs(du) < 0.05
-        %    du = 0;
-        %else
-            pList(curStep) = du_p;
-            dList(curStep) = du_d;
-            iList(curStep) = du_i;
-
-            last2Error = lastError;
-            lastError = outputError;
-        %end
-        nextN = nList(curStep) + du;
+       
+        pList(curStep) = du_p;
+        dList(curStep) = du_d;
+        iList(curStep) = du_i;
+        last2Error = lastError;
+        lastError = outputError;
+        
+        nextN = pidNList(curStep) + du;
         nextN = max(minN, nextN);
         nextN = min(maxN, nextN);
         for nextIndex = 0 : discreteControlPeriodStep
             if curStep + nextIndex > finalStep
                 break;
             end
-            nList(curStep + nextIndex) = nextN;
+            pidNList(curStep + nextIndex) = nextN;
         end
+        
+        for nextIndex = 0 : discreteControlPeriodStep
+            if curStep + nextIndex > finalStep
+                break;
+            end
+            if abs(outputError) >= errorThreshold && ...
+                    abs(nList(curStep) - pidNList(curStep)) >= inputThreshold && ...
+                curStep - policyChangeList(end) >= dwellThreshold / simulationDt
+                nList(curStep + nextIndex) = pidNList(curStep + nextIndex);
+                policyChangeList = [policyChangeList, curStep];
+            else
+                nList(curStep + nextIndex) = nList(curStep);
+            end
+        end
+        
     end
 
     if curStep < finalStep
         xList(:, curStep + 1) = nextState;
     end
 end
+policyChangeGap = [];
+for curIndex = 2 : length(policyChangeList)
+    gap = policyChangeList(curIndex) - policyChangeList(curIndex - 1);
+    policyChangeGap = [policyChangeGap, gap * simulationDt];
+end
+disp(policyChangeGap)
 figure(1);
 plot(timeList, xList(5, :) * 100000);
 figure(2);
