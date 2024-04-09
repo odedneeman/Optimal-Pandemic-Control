@@ -229,12 +229,12 @@ for curIndex = 1 : discreteControlPeriodStep
 end
 controllerKpDiscrete = 0.05;%10000;
 controllerKdDiscrete = 0.001;%300000;
-controllerKiDiscrete = 0.01;
+controllerKiDiscrete = 0.008;
 lastError = 0;
 last2Error = 0;
 
 errorThreshold = 0.0400;
-inputThreshold = 0.04; 
+inputThreshold = 0.035; 
 dwellThreshold = 14;
 policyChangeList = 0;
 % run simulation
