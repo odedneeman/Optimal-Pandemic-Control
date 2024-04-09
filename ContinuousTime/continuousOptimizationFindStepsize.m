@@ -1,4 +1,4 @@
-function ret = continuousOptimization(newParams, saveFileName, loadFileName)
+function ret = continuousOptimizationFindStepsize(newParams, saveFileName, loadFileName)
 
     % Define global constants    
     % Parameter set 1: model parameters
@@ -89,7 +89,7 @@ function ret = continuousOptimization(newParams, saveFileName, loadFileName)
     end
     finalStep = round(finalTime / simulationDt) + 1;
     timeList = 0 : simulationDt : finalTime;
-    fixedStepsize = 0.01;
+    fixedStepsize = -0.2;
     maxIter = 500;
     
     % List of the system states during simulation (time horizon)

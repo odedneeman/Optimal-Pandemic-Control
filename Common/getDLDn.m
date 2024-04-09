@@ -8,6 +8,7 @@ function ret = getDLDn(x, beta, curTime, n)
     global r;
     global w;
     global kappa;
+    global minN; 
     curKappa = getTVKappa(curTime);
     gumbel = getGumbelCDF(curTime);
     gumbelParam = 1 - gumbel;

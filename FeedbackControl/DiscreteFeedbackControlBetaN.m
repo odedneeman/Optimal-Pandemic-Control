@@ -149,7 +149,7 @@ xList(:,1) = x0;
 trueNList = zeros(1, finalStep);
 nList = zeros(1, finalStep);
 nList(1) = referenceNList(1);
-controllerKp = 500;
+controllerKp = 10000;
 controllerKd = 80000000;
 controllerKi = 1;
 lastError = 0;
@@ -186,9 +186,7 @@ for curStep = 1 :finalStep
     du_d = controllerKd * ((outputError - lastError) - (lastError - last2Error));
     du_i = controllerKi * (outputError);
     du = du_p + du_d + du_i;
-    pList(curStep) = du_p;
-    dList(curStep) = du_d;
-    iList(curStep) = du_i;
+    
     last2Error = lastError;
     lastError = outputError;
     if curStep < finalStep
@@ -207,34 +205,39 @@ plot(timeList, trueNList)
 legend(["N for real system betaN =" + string(betaN), "N for original system betaN = 0.53", "Controlled system (death toll) betaN =" + string(betaN)])
 xlabel("Time (days)")
 ylabel("Actual employment rate")
-figure(3);
-plot(timeList, pList)
-hold on;
-plot(timeList, dList)
-plot(timeList, iList)
-xlabel("Time (days)")
-ylabel("Control input")
-legend(["Proportional input", "Derivative input", "Integral input"])
+
 controlledCost = costFunctionIntegral(xList(:,1:costFinalStep), betaList(1:costFinalStep), simulationDt);
 disp("Cost for the controlled model (death toll) = " + controlledCost);
 
 
-% Tracking the effective R
+% approximation of the input with average
 xList = zeros(systemDimension, finalStep);
 betaList = zeros(1, finalStep);
 xList(:,1) = x0;
-trueNList = zeros(1, finalStep);
 nList = zeros(1, finalStep);
-nList(1) = referenceNList(1);
-controllerKp = 0.02;
-controllerKd = 0.05;
-controllerKi = 0.01;
+pidNList = zeros(1, finalStep);
+trueNList = zeros(1, finalStep);
+
+
+discreteControlPeriod = 1; % control period, in days
+discreteControlPeriodStep = fix(discreteControlPeriod / simulationDt);
+
+% initialize for the first control period
+for curIndex = 1 : discreteControlPeriodStep
+    nList(curIndex) = referenceNList(1);
+    pidNList(curIndex) = referenceNList(1);
+end
+controllerKpDiscrete = 0.05;%10000;
+controllerKdDiscrete = 0.001;%300000;
+controllerKiDiscrete = 0.01;
 lastError = 0;
 last2Error = 0;
-dList = zeros(1, finalStep);
-pList = zeros(1, finalStep);
-iList = zeros(1, finalStep);
-errorList = zeros(1, finalStep);
+
+errorThreshold = 0.0400;
+inputThreshold = 0.04; 
+dwellThreshold = 14;
+policyChangeList = 0;
+% run simulation
 for curStep = 1 :finalStep
     curTime = (curStep - 1) * simulationDt;
     curState = xList(:, curStep);
@@ -254,64 +257,105 @@ for curStep = 1 :finalStep
         curN = minN;
     end
     trueNList(curStep) = curN;
-
     curBeta = getBetaFromN(curN, curTime);
     betaList(curStep) = curBeta;
     curDynamics = seirdDynamics(curState, curBeta);
     nextState = curState + curDynamics * simulationDt;
-    
-    %curDeathToll = curState(5);
-    %curDeathTollRef = referenceDeathToll(curStep);
-    %outputError = curDeathTollRef - curDeathToll;
-    curSusceptible = curState(1);
-    curEffectiveR = curBeta / gamma * curSusceptible;
-    curSusceptibleRef = referenceSusceptible(curStep);
-    curBetaRef = referenceBetaList(curStep);
-    curEffectiveRRef = curBetaRef / gamma * curSusceptibleRef;
+    if mod(curStep, discreteControlPeriodStep) == 0
+        %curDeathToll = curState(5);
+        %curDeathTollRef = referenceDeathToll(curStep);
+        %outputError = curDeathTollRef - curDeathToll;
 
-    outputError = curEffectiveRRef - curEffectiveR;
-    errorList(curStep) = outputError;
-    du_p = controllerKp * (outputError - lastError);
-    du_d = controllerKd * ((outputError - lastError) - (lastError - last2Error));
-    du_i = controllerKi * (outputError);
-    du = du_p + du_d + du_i;
-    pList(curStep) = du_p;
-    dList(curStep) = du_d;
-    iList(curStep) = du_i;
-    last2Error = lastError;
-    lastError = outputError;
+        curSusceptible = curState(1);
+        curEffectiveR = curBeta / gamma * curSusceptible;
+        curSusceptibleRef = referenceSusceptible(curStep);
+        curBetaRef = referenceBetaList(curStep);
+        curEffectiveRRef = curBetaRef / gamma * curSusceptibleRef;
+        outputError = curEffectiveRRef - curEffectiveR;
+        
+
+        du_p = controllerKpDiscrete * (outputError - lastError);
+        du_d = controllerKdDiscrete * ((outputError - lastError) - (lastError - last2Error));
+        du_i = controllerKiDiscrete * (outputError);
+        du = du_p + du_d + du_i;
+       
+        pList(curStep) = du_p;
+        dList(curStep) = du_d;
+        iList(curStep) = du_i;
+        last2Error = lastError;
+        lastError = outputError;
+        
+        nextN = pidNList(curStep) + du;
+        nextN = max(minN, nextN);
+        nextN = min(maxN, nextN);
+        for nextIndex = 0 : discreteControlPeriodStep
+            if curStep + nextIndex > finalStep
+                break;
+            end
+            pidNList(curStep + nextIndex) = nextN;
+        end
+        
+        for nextIndex = 0 : discreteControlPeriodStep
+            if curStep + nextIndex > finalStep
+                break;
+            end
+            if abs(outputError) >= errorThreshold && ...
+                    abs(nList(curStep) - pidNList(curStep)) >= inputThreshold && ...
+                curStep - policyChangeList(end) >= dwellThreshold / simulationDt
+                nList(curStep + nextIndex) = pidNList(curStep + nextIndex);
+                policyChangeList = [policyChangeList, curStep];
+            else
+                nList(curStep + nextIndex) = nList(curStep);
+            end
+        end
+        
+    end
+
     if curStep < finalStep
         xList(:, curStep + 1) = nextState;
-        nList(curStep + 1) = nList(curStep) + du;
-        nList(curStep + 1) = min(maxN, nList(curStep +1));
     end
 end
-figure(5);
-plot(timeList, pList);
+policyChangeGap = [];
+for curIndex = 2 : length(policyChangeList)
+    gap = policyChangeList(curIndex) - policyChangeList(curIndex - 1);
+    policyChangeGap = [policyChangeGap, gap * simulationDt];
+end
+disp(policyChangeGap)
+figure(1);
+plot(timeList, xList(5, :) * 100000);
 figure(2);
 plot(timeList, trueNList);
+figure(3);
+plot(pList)
+hold on;
+plot(dList)
+plot(iList)
+xlabel("Time (days)")
+ylabel("Control input")
+legend(["Proportional input", "Derivative input", "Integral input"])
 figure(4);
 plot(timeList, xList(1,:) .* betaList / gamma);
 xlabel("Time (days)")
 ylabel("Effective R value")
 
+discreteControlCost = costFunctionIntegral(xList(:,1:costFinalStep), betaList(1:costFinalStep), simulationDt);
+disp("Cost function with discrete control = " + string(discreteControlCost));
 % add the reference optimal value to the figure
-effectiveRControlCost = costFunctionIntegral(xList(:,1:costFinalStep), betaList(1:costFinalStep), simulationDt);
-disp("Cost function with effective R control = " + string(effectiveRControlCost));
-load("C:\Users\Klaus\Documents\Graduate\OptimizationRefactored\ContinuousTime\ContinuousSensitivityResultsWithEndo\beta_N_" + string(betaN) + ".mat")
+
+load("..\ContinuousTime\ContinuousSensitivityResultsWithEndo\beta_N_" + string(betaN) + ".mat")
 figure(1);
 plot(timeList, xList(5,:) * 100000);
 legend(["Real system betaN =" + string(betaN), "Original system betaN = 0.53", "Controlled system betaN =" + string(betaN), ...
-    "Optimal solution for betaN =" + string(betaN)])
+   "Controlled system (discrete, effective R), betaN =" + string(betaN), "Optimal solution for betaN =" + string(betaN)])
 figure(2);
 plot(timeList, nList);
 legend(["N for real system betaN =" + string(betaN), "N for original system betaN = 0.53", "Controlled system (death toll) betaN =" + string(betaN), ...
-    "Controlled system (effective R) = " + string(betaN), "Optimal N for betaN =" + string(betaN)])
+    "Controlled system (discrete, death toll), betaN = " + string(betaN), "Optimal N for betaN =" + string(betaN)])
 figure(4);
 plot(timeList, betaList .* xList(1,:) / gamma);
 legend(["Effective R for real system betaN = " + string(betaN), ...
     "Effective R for original system betaN = 0.53", ...
-    "Controlled system betaN =" + string(betaN), ...
-    "Optimal N for betaN =" + string(betaN)])
+    "Controlled system (discrete, death toll), betaN" + string(betaN), ...
+    "Optimal effective R for betaN =" + string(betaN)])
 
 
