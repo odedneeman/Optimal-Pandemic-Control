@@ -13,7 +13,7 @@ for curBetaN = betaNList
 end
 
 betaWList = [0.2,0.3,0.376, 0.4,0.5,0.6];
-%betaWList = [];
+betaWList = [0.45];
 for curBetaW = betaWList
     paramMap = containers.Map(["betaW"], [curBetaW]);
     saveFileName = "./ContinuousSensitivityResultsWithEndo/beta_W_" + curBetaW + ".mat";
@@ -21,7 +21,7 @@ for curBetaW = betaWList
 end
 
 TvList = [500, 520, 540, 560, 580, 600];
-%TvList = [];
+TvList = [];
 eulerConst = 0.577216;
 sigmaTv = 44.74;
 getMuTv = @(t)(t + eulerConst * sigmaTv);

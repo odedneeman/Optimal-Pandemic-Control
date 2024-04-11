@@ -83,7 +83,7 @@ feedbackNList = zeros(1, finalStep);
 feedbackNList(1) = referenceNList(1);
 
 % change the parameter
-betaW = 0.5;
+betaW = 0.45;
 
 % first simulate the system 
 

@@ -83,7 +83,7 @@ feedbackNList = zeros(1, finalStep);
 feedbackNList(1) = referenceNList(1);
 
 % change the parameter
-betaN = 0.4;
+betaN = 0.6;
 
 % first simulate the system 
 
@@ -197,12 +197,12 @@ for curStep = 1 :finalStep
 end
 figure(1);
 plot(timeList, xList(5,:)* 100000)
-legend(["Real system betaN =" + string(betaN), "Original system betaN = 0.53", "Controlled system (death toll) betaN =" + string(betaN)])
 xlabel("Time (days)")
 ylabel("Death toll per 100,000")
+figure(4);
+plot(timeList, xList(1,:) .* betaList / gamma);
 figure(2);
 plot(timeList, trueNList)
-legend(["N for real system betaN =" + string(betaN), "N for original system betaN = 0.53", "Controlled system (death toll) betaN =" + string(betaN)])
 xlabel("Time (days)")
 ylabel("Actual employment rate")
 
@@ -345,17 +345,19 @@ disp("Cost function with discrete control = " + string(discreteControlCost));
 load("..\ContinuousTime\ContinuousSensitivityResultsWithEndo\beta_N_" + string(betaN) + ".mat")
 figure(1);
 plot(timeList, xList(5,:) * 100000);
-legend(["Real system betaN =" + string(betaN), "Original system betaN = 0.53", "Controlled system betaN =" + string(betaN), ...
-   "Controlled system (discrete, effective R), betaN =" + string(betaN), "Optimal solution for betaN =" + string(betaN)])
+legend(["Real system \beta_N =" + string(betaN), "Original system \beta_N = 0.53", "Controlled system (continuous, death toll), \beta_N = " + string(betaN), ...
+   "Controlled system (discrete, death toll), \beta_N = " + string(betaN), "Optimal death for \beta_N = " + string(betaN)])
 figure(2);
 plot(timeList, nList);
-legend(["N for real system betaN =" + string(betaN), "N for original system betaN = 0.53", "Controlled system (death toll) betaN =" + string(betaN), ...
-    "Controlled system (discrete, death toll), betaN = " + string(betaN), "Optimal N for betaN =" + string(betaN)])
+legend(["Real system \beta_N = " + string(betaN), "Original system \beta_N = 0.53", "Controlled system (continuous, death toll), \beta_N = " + string(betaN), ...
+    "Controlled system (discrete, death toll), \beta_N = " + string(betaN), "Optimal employment for \beta_N =" + string(betaN)])
 figure(4);
 plot(timeList, betaList .* xList(1,:) / gamma);
-legend(["Effective R for real system betaN = " + string(betaN), ...
-    "Effective R for original system betaN = 0.53", ...
-    "Controlled system (discrete, death toll), betaN" + string(betaN), ...
-    "Optimal effective R for betaN =" + string(betaN)])
+legend(["Real system \beta_N = " + string(betaN), ...
+    "Original system \beta_N = 0.53", ...
+    "Controlled system (continuous, death toll) \beta_N = " + string(betaN), ...
+    "Controlled system (discrete, death toll) \beta_N = " + string(betaN),...
+    "Optimal effective R for \beta_N = " + string(betaN)])
+
 
 

@@ -83,7 +83,7 @@ feedbackNList = zeros(1, finalStep);
 feedbackNList(1) = referenceNList(1);
 
 % change the parameter
-betaN = 0.65;
+betaN = 0.6;
 
 % first simulate the system 
 
@@ -350,7 +350,7 @@ disp("Cost function with discrete control = " + string(discreteControlCost));
 load("..\ContinuousTime\ContinuousSensitivityResultsWithEndo\beta_N_" + string(betaN) + ".mat")
 figure(1);
 plot(timeList, xList(5,:) * 100000);
-legend(["Real system \beta_N =" + string(betaN), "Original system \beta_N = 0.53", "Controlled system (continuous, effective R), \beta_N = " + string(betaN), ...
+legend(["Real system \beta_N = " + string(betaN), "Original system \beta_N = 0.53", "Controlled system (continuous, effective R), \beta_N = " + string(betaN), ...
     "Controlled system (discrete, effective R), \beta_N = " + string(betaN), "Optimal death for \beta_N = " + string(betaN)])
 figure(2);
 plot(timeList, nList);

@@ -83,7 +83,7 @@ feedbackNList = zeros(1, finalStep);
 feedbackNList(1) = referenceNList(1);
 
 % change the parameter
-betaW = 0.4;
+betaW = 0.6;
 
 % first simulate the system 
 
@@ -149,8 +149,8 @@ xList(:,1) = x0;
 trueNList = zeros(1, finalStep);
 nList = zeros(1, finalStep);
 nList(1) = referenceNList(1);
-controllerKp = 10000;
-controllerKd = 80000000;
+controllerKp = 4000;
+controllerKd = 26000000;
 controllerKi = 1;
 lastError = 0;
 last2Error = 0;
@@ -171,6 +171,9 @@ for curStep = 1 :finalStep
     curN = nList(curStep);
     if curN > maxNWithEndo
         curN = maxNWithEndo;
+    end
+    if curN < minN
+        curN = minN;
     end
     trueNList(curStep) = curN;
 
@@ -197,14 +200,14 @@ for curStep = 1 :finalStep
 end
 figure(1);
 plot(timeList, xList(5,:)* 100000)
-legend(["Real system betaN =" + string(betaN), "Original system betaN = 0.53", "Controlled system (death toll) betaN =" + string(betaN)])
 xlabel("Time (days)")
 ylabel("Death toll per 100,000")
 figure(2);
 plot(timeList, trueNList)
-legend(["N for real system betaN =" + string(betaN), "N for original system betaN = 0.53", "Controlled system (death toll) betaN =" + string(betaN)])
 xlabel("Time (days)")
 ylabel("Actual employment rate")
+figure(4);
+plot(timeList, xList(1,:) .* betaList / gamma);
 
 controlledCost = costFunctionIntegral(xList(:,1:costFinalStep), betaList(1:costFinalStep), simulationDt);
 disp("Cost for the controlled model (death toll) = " + controlledCost);
@@ -229,7 +232,7 @@ for curIndex = 1 : discreteControlPeriodStep
 end
 controllerKpDiscrete = 1000;
 controllerKdDiscrete = 300000;
-controllerKiDiscrete = 1;
+controllerKiDiscrete = 0;
 lastError = 0;
 last2Error = 0;
 
@@ -342,20 +345,22 @@ discreteControlCost = costFunctionIntegral(xList(:,1:costFinalStep), betaList(1:
 disp("Cost function with discrete control = " + string(discreteControlCost));
 % add the reference optimal value to the figure
 
-load("..\ContinuousTime\ContinuousSensitivityResultsWithEndo\beta_N_" + string(betaN) + ".mat")
+load("..\ContinuousTime\ContinuousSensitivityResultsWithEndo\beta_W_" + string(betaW) + ".mat")
 figure(1);
 plot(timeList, xList(5,:) * 100000);
-legend(["Real system betaN =" + string(betaN), "Original system betaN = 0.53", "Controlled system betaN =" + string(betaN), ...
-   "Controlled system (discrete, death toll), betaN =" + string(betaN), "Optimal solution for betaN =" + string(betaN)])
+legend(["Real system \beta_W = " + string(betaW), "Original system \beta_W = 0.376", "Controlled system (continuous, effective R), \beta_W = " + string(betaW), ...
+   "Controlled system (discrete, death toll), \beta_W = " + string(betaW), "Optimal death for \beta_W = " + string(betaW)])
 figure(2);
 plot(timeList, nList);
-legend(["N for real system betaN =" + string(betaN), "N for original system betaN = 0.53", "Controlled system (death toll) betaN =" + string(betaN), ...
-    "Controlled system (discrete, death toll), betaN = " + string(betaN), "Optimal N for betaN =" + string(betaN)])
+legend(["Real system \beta_W = " + string(betaW), "Original system \beta_W = 0.376", "Controlled system (continuous, effective R), \beta_W = " + string(betaW), ...
+   "Controlled system (discrete, death toll), \beta_W = " + string(betaW), "Optimal employment for \beta_W = " + string(betaW)])
+
 figure(4);
 plot(timeList, betaList .* xList(1,:) / gamma);
-legend(["Effective R for real system betaN = " + string(betaN), ...
-    "Effective R for original system betaN = 0.53", ...
-    "Controlled system (discrete, death toll), betaN" + string(betaN), ...
-    "Optimal effective R for betaN =" + string(betaN)])
+legend(["Real system \beta_W = " + string(betaW), ...
+    "Original system \beta_W = 0.376", ...
+    "Controlled system (continuous, death toll) \beta_W = " + string(betaW), ...
+    "Controlled system (discrete, death toll) \beta_W = " + string(betaW),...
+    "Optimal effective R for \beta_W = " + string(betaW)])
 
 
