@@ -1,16 +1,19 @@
 clear;
 addpath("..\Common\")
-load("continuous_beta_N_0.53.mat", "xList");
+load("continuous_beta_N_0.53.mat", "xList", "nList", "betaList", "simulationDt", "finalStep");
+global tV;
+tV = 540;
+%[betaList, xList, nList] = getVaccineState(xList, betaList, nList, tV, simulationDt, finalStep);
 referenceXList = xList;
 referenceDeathToll = xList(5,:);
 referenceResolving = xList(4,:);
 referenceSusceptible = xList(1,:);
-load("continuous_beta_N_0.53.mat", "nList");
+%load("continuous_beta_N_0.53.mat", "nList");
 referenceNList = nList; 
 load("continuous_beta_N_0.53.mat", "costList");
 costList = costList(costList>0);
 referenceCost = min(real(costList));
-load("continuous_beta_N_0.53.mat", "betaList");
+%load("continuous_beta_N_0.53.mat", "betaList");
 referenceBetaList = betaList;
 costFinalStep = 63501;
 % Parameter set 1: model parameters
@@ -321,6 +324,9 @@ for curIndex = 2 : length(policyChangeList)
     policyChangeGap = [policyChangeGap, gap * simulationDt];
 end
 disp(policyChangeGap)
+discreteXList = xList;
+discreteNList = trueNList;
+discreteBetaList = betaList;
 figure(1);
 plot(timeList, xList(5, :) * 100000);
 figure(2);
@@ -359,5 +365,10 @@ legend(["Real system \beta_N = " + string(betaN), ...
     "Controlled system (discrete, death toll) \beta_N = " + string(betaN),...
     "Optimal effective R for \beta_N = " + string(betaN)])
 
+xList = discreteXList;
+betaList = discreteBetaList;
+nList = discreteNList;
+fileName = "./matResults/betaNDeathToll_" + betaN + ".mat";
+save(fileName);
 
 

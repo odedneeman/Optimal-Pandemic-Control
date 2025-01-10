@@ -8,7 +8,7 @@ referenceSusceptible = xList(1,:);
 load("continuous_beta_N_0.53.mat", "nList");
 referenceNList = nList; 
 load("continuous_beta_N_0.53.mat", "costList");
-costList = costList(costList>0);
+costList = costListk(costList>0);
 referenceCost = min(real(costList));
 load("continuous_beta_N_0.53.mat", "betaList");
 referenceBetaList = betaList;
@@ -298,7 +298,7 @@ ylabel("Effective R value")
 % add the reference optimal value to the figure
 effectiveRControlCost = costFunctionIntegral(xList(:,1:costFinalStep), betaList(1:costFinalStep), simulationDt);
 disp("Cost function with effective R control = " + string(effectiveRControlCost));
-load("C:\Users\Klaus\Documents\Graduate\OptimizationRefactored\ContinuousTime\ContinuousSensitivityResultsWithEndo\beta_N_" + string(betaN) + ".mat")
+load("C:\Users\nodie\OneDrive\Desktop\work\lockdown opt\Pandemic Control and Econ Optimization\MATLAB Codes\ContinuousTime\ContinuousSensitivityResultsWithEndo\beta_N_" + string(betaN) + ".mat")
 figure(1);
 plot(timeList, xList(5,:) * 100000);
 legend(["Real system betaN =" + string(betaN), "Original system betaN = 0.53", "Controlled system betaN =" + string(betaN), ...

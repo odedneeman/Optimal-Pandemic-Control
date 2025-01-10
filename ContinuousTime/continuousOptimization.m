@@ -64,6 +64,7 @@ function ret = continuousOptimization(newParams, saveFileName, loadFileName)
     global phiKappa;
     % To disable the endogenous response, set kappa = 0. 
     kappa = 30500;
+    %kappa = 0;
     muF = 245;
     sigmaF = 27.5;
     phiKappa = 0.18;
@@ -77,7 +78,8 @@ function ret = continuousOptimization(newParams, saveFileName, loadFileName)
     x0 = [0.9999; 0.00005; 0.00005; 0; 0; 0];
     
     inputDimension = 1; % CONSTANT
-    armijoAlpha = 0.01;
+    armijoAlpha = 0.01; %def
+    %armijoAlpha = 0.1;
     armijoBeta = 0.5;
     
     
@@ -89,8 +91,8 @@ function ret = continuousOptimization(newParams, saveFileName, loadFileName)
     end
     finalStep = round(finalTime / simulationDt) + 1;
     timeList = 0 : simulationDt : finalTime;
-    fixedStepsize = 0.01;
-    maxIter = 500;
+    fixedStepsize = 0.01; %def
+    maxIter = 7;
     
     % List of the system states during simulation (time horizon)
     xHist = zeros(systemDimension, finalStep);
@@ -108,16 +110,27 @@ function ret = continuousOptimization(newParams, saveFileName, loadFileName)
     % This could somewhat avoid the infeasibility by endogenous response.
     costateList = zeros(systemDimension, finalStep);
     betaList = ones(inputDimension, finalStep);
-    nList = ones(inputDimension, finalStep) * minN;
+    %nList = ones(inputDimension, finalStep) * minN; %def
+    
+    %nList = ones(inputDimension, finalStep) * 0.905; %for betaW=0.35
+    nList = ones(inputDimension, finalStep) * 0.84; %for betaW=0.4
+    initialNList = nList;
     fminTimer = 0.0;
     nrTimer = 0.0;
-   
+    
     %%% continue optimization from previous results
     %load(".\ContinuousSensitivityResultsWithEndo\beta_N_0.53.mat", "betaList")
     if loadFileName ~= ""
         load(loadFileName, "nList")
         disp("Successfully loaded initial guess from " + loadFileName)
     end
+    %initialNList = movmean(nList, 25000); %for benchmark smoothed
+    % initialNList = movmean(nList, 70000); 
+    % figure;
+    % plot(timeList, initialNList);
+
+    % nList = initialNList;
+    
      % initialize beta
     for curStep = 1 : finalStep
         curTime = (curStep - 1) * simulationDt;
@@ -167,9 +180,12 @@ function ret = continuousOptimization(newParams, saveFileName, loadFileName)
         % Calculate the cost function with current input and state
         curCost = costFunctionIntegral(xList, betaList, simulationDt);
         disp(curCost)
+        %if curIteration > 1
+        %if abs(costList(curIteration) - curCost) < 0.00005 %change is small
         if curCost > costList(curIteration)
             break;
         end
+        %end
         costList(curIteration + 1) = curCost;
     
         % Use backward Euler to calculate the costate
@@ -203,15 +219,16 @@ function ret = continuousOptimization(newParams, saveFileName, loadFileName)
             maxBeta = betaRange(2);
     
             % May use different minimizers to solve the PMP
-            curMinimizer = fminbnd(target, minBeta, maxBeta);
+            curMinimizer = fminbnd(target, minBeta, maxBeta); %this was
+            %the default
             %curMinimizer = getMinimizerNewtonRaphson(curX, curP, curTime, minBeta, maxBeta);
             minimizerList(curStep) = curMinimizer;
         end
         % Uncomment this block to use Armijo stepsize
-        %armijoStepsize = getArmijoStepsize(xList, betaList, costateList, minimizerList, simulationDt, finalTime, armijoAlpha, armijoBeta, ...
-        %        armijoStepsize);
-        %betaList = betaList + armijoStepsize * (minimizerList - betaList);
-        betaList = betaList + fixedStepsize * (minimizerList - betaList);
+        armijoStepsize = getArmijoStepsize(xList, betaList, costateList, minimizerList, simulationDt, finalTime, armijoAlpha, armijoBeta, ...
+               armijoStepsize);
+        betaList = betaList + armijoStepsize * (minimizerList - betaList);
+        % betaList = betaList + fixedStepsize * (minimizerList - betaList);
     end
     
     

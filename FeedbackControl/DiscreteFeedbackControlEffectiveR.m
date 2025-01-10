@@ -1,18 +1,42 @@
-clear;
+clear; close all;
 addpath("..\Common\")
 load("continuous_beta_N_0.53.mat", "xList");
+load("..\ContinuousTime\ContinuousSensitivityResultsWithEndo\beta_N_0.53.mat", "xList")
 referenceXList = xList;
 referenceDeathToll = xList(5,:);
 referenceResolving = xList(4,:);
 referenceSusceptible = xList(1,:);
 load("continuous_beta_N_0.53.mat", "nList");
+load("..\ContinuousTime\ContinuousSensitivityResultsWithEndo\beta_N_0.53.mat", "nList")
 referenceNList = nList; 
 load("continuous_beta_N_0.53.mat", "costList");
+load("..\ContinuousTime\ContinuousSensitivityResultsWithEndo\beta_N_0.53.mat", "costList")
 costList = costList(costList>0);
 referenceCost = min(real(costList));
 load("continuous_beta_N_0.53.mat", "betaList");
+load("..\ContinuousTime\ContinuousSensitivityResultsWithEndo\beta_N_0.53.mat", "betaList")
 referenceBetaList = betaList;
 costFinalStep = 63501;
+
+saveFile = 1;
+
+betaType = 'N';
+newBeta = 0.4;
+
+threshList = {}; %Just to keep track of the input thresholds
+
+
+if betaType == 'W'
+    betaStr = 'W';
+    origBeta = 0.376;
+end
+
+if betaType == 'N'
+    betaStr = 'N';
+    origBeta = 0.53;
+end
+
+
 % Parameter set 1: model parameters
 global sigma;
 global gamma;
@@ -83,7 +107,13 @@ feedbackNList = zeros(1, finalStep);
 feedbackNList(1) = referenceNList(1);
 
 % change the parameter
-betaN = 0.6;
+if betaType == 'W'
+    betaW = newBeta;
+end
+
+if betaType == 'N'
+    betaN = newBeta;
+end
 
 % first simulate the system 
 
@@ -160,7 +190,6 @@ iList = zeros(1, finalStep);
 for curStep = 1 :finalStep
     curTime = (curStep - 1) * simulationDt;
     curState = xList(:, curStep);
-
     curKappa = getTVKappa(curTime);
     R = curState(4);
     curEndo = curKappa * delta * theta * R;
@@ -171,6 +200,9 @@ for curStep = 1 :finalStep
     curN = nList(curStep);
     if curN > maxNWithEndo
         curN = maxNWithEndo;
+    end
+    if curN < minN
+        curN = minN;
     end
     trueNList(curStep) = curN;
 
@@ -185,7 +217,6 @@ for curStep = 1 :finalStep
     curBetaRef = referenceBetaList(curStep);
     curEffectiveRRef = curBetaRef / gamma * curSusceptibleRef;
     outputError = curEffectiveRRef - curEffectiveR;
-
     du_p = controllerKp * (outputError - lastError);
     du_d = controllerKd * ((outputError - lastError) - (lastError - last2Error));
     du_i = controllerKi * (outputError);
@@ -199,20 +230,19 @@ for curStep = 1 :finalStep
         nList(curStep + 1) = min(maxN, nList(curStep +1));
     end
 end
+figure(4);
+plot(timeList, betaList .* xList(1,:) / gamma)
 figure(1);
-plot(timeList, xList(5,:)* 100000)
-
+plot(timeList, xList(5,:) * 100000);
 xlabel("Time (days)")
 ylabel("Death toll per 100,000")
 figure(2);
 plot(timeList, trueNList)
 xlabel("Time (days)")
 ylabel("Actual employment rate")
-figure(4);
-plot(timeList, xList(1,:) .* betaList / gamma);
 
 controlledCost = costFunctionIntegral(xList(:,1:costFinalStep), betaList(1:costFinalStep), simulationDt);
-disp("Cost for the controlled model (death toll) = " + controlledCost);
+disp("Cost for the controlled model (effective R) = " + controlledCost);
 
 
 % approximation of the input with average
@@ -232,21 +262,28 @@ for curIndex = 1 : discreteControlPeriodStep
     nList(curIndex) = referenceNList(1);
     pidNList(curIndex) = referenceNList(1);
 end
-controllerKpDiscrete = 0.05;%10000;
+controllerKpDiscrete = 0.05;%10000; % def 0.05
 controllerKdDiscrete = 0.001;%300000;
-controllerKiDiscrete = 0.008;
+controllerKiDiscrete = 0.006; % def 0.008 new- 0.004
 lastError = 0;
 last2Error = 0;
 
-errorThreshold = 0.0400;
-inputThreshold = 0.035; 
+errorThreshold = 0.03;
+inputThresholdBase = 0.1;
+inputThresholdDecay = 0.001; % Per day. def now = 0.0015 or 0.001
+inputThresholdMin = 0.03; %def now = 0.02 or 0.03
 dwellThreshold = 14;
+dwellThresholdIncrease = 1/1000;  % Per step. so per day it's *(1/dt) = *100
+lastSwitch = 0;
 policyChangeList = 0;
 % run simulation
 for curStep = 1 :finalStep
     curTime = (curStep - 1) * simulationDt;
     curState = xList(:, curStep);
-
+    dwellThreshold = dwellThreshold + dwellThresholdIncrease;
+    daysSinceSwitch = (curStep - lastSwitch) *simulationDt;
+    inputThreshold = max(inputThresholdBase - (daysSinceSwitch * inputThresholdDecay),...
+        inputThresholdMin); 
     curKappa = getTVKappa(curTime);
     R = curState(4);
     curEndo = curKappa * delta * theta * R;
@@ -309,6 +346,8 @@ for curStep = 1 :finalStep
                 curStep - policyChangeList(end) >= dwellThreshold / simulationDt
                 nList(curStep + nextIndex) = pidNList(curStep + nextIndex);
                 policyChangeList = [policyChangeList, curStep];
+                threshList{end+1} = inputThreshold;
+                lastSwitch = curStep;
             else
                 nList(curStep + nextIndex) = nList(curStep);
             end
@@ -326,15 +365,18 @@ for curIndex = 2 : length(policyChangeList)
     policyChangeGap = [policyChangeGap, gap * simulationDt];
 end
 disp(policyChangeGap)
+discreteXList = xList;
+discreteNList = trueNList;
+discreteBetaList = betaList;
 figure(1);
 plot(timeList, xList(5, :) * 100000);
 figure(2);
 plot(timeList, trueNList);
 figure(3);
-plot(pList)
+stem(pList(pList~=0))
 hold on;
-plot(dList)
-plot(iList)
+stem(dList(pList~=0))
+stem(iList(pList~=0))
 xlabel("Time (days)")
 ylabel("Control input")
 legend(["Proportional input", "Derivative input", "Integral input"])
@@ -347,21 +389,27 @@ discreteControlCost = costFunctionIntegral(xList(:,1:costFinalStep), betaList(1:
 disp("Cost function with discrete control = " + string(discreteControlCost));
 % add the reference optimal value to the figure
 
-load("..\ContinuousTime\ContinuousSensitivityResultsWithEndo\beta_N_" + string(betaN) + ".mat")
+load("..\ContinuousTime\ContinuousSensitivityResultsWithEndo\beta_" + betaStr + "_" + string(newBeta) + ".mat")
 figure(1);
 plot(timeList, xList(5,:) * 100000);
-legend(["Real system \beta_N = " + string(betaN), "Original system \beta_N = 0.53", "Controlled system (continuous, effective R), \beta_N = " + string(betaN), ...
-    "Controlled system (discrete, effective R), \beta_N = " + string(betaN), "Optimal death for \beta_N = " + string(betaN)])
+legend(["Real system \beta_" + betaStr + " = " + string(newBeta), "Original system \beta_" + betaStr + " = " + string(origBeta), "Controlled system (continuous, effective R), \beta_" + betaStr + " = " + string(newBeta), ...
+   "Controlled system (discrete, effective R), \beta_" + betaStr + " = " + string(newBeta), "Optimal death for \beta_" + betaStr + " = "  + string(newBeta)])
 figure(2);
-plot(timeList, nList);
-legend(["Real system \beta_N = " + string(betaN), "Original system \beta_N = 0.53", "Controlled system (continuous, effective R), \beta_N = " + string(betaN), ...
-   "Controlled system (discrete, effective R), \beta_N = " + string(betaN), "Optimal employment for \beta_N = " + string(betaN)])
+plot(timeList, nList, 'r--');
+legend(["Real system \beta_" + betaStr +  " = " + string(newBeta), "Original system \beta_" + betaStr + " = " + origBeta, "Controlled system (continuous, effective R), \beta_" + betaStr + " = " + string(newBeta), ...
+   "Controlled system (discrete, effective R), \beta_" + betaStr + " = " + string(newBeta), "Optimal employment for \beta_" + betaStr + " = " + string(newBeta)])
 figure(4);
 plot(timeList, betaList .* xList(1,:) / gamma);
-legend(["Real system \beta_N = " + string(betaN), ...
-    "Original system \beta_N = 0.53", ...
-    "Controlled system (continuous, effective R) \beta_N = " + string(betaN), ...
-    "Controlled system (discrete, effective R) \beta_N = " + string(betaN),...
-    "Optimal effective R for \beta_N = " + string(betaN)])
+legend(["Real system \beta_" + betaStr + " = " + string(newBeta), ...
+    "Original system \beta_" + betaStr + " = " + string(origBeta), ...
+    "Controlled system (continuous, effective R) \beta_" + betaStr + " = " + string(newBeta), ...
+    "Controlled system (discrete, effective R) \beta_" + betaStr + " = " + string(newBeta),...
+    "Optimal effective R for \beta_" + betaStr + " = " + string(newBeta)])
 
-
+xList = discreteXList;
+betaList = discreteBetaList;
+nList = discreteNList;
+fileName = "./matResults/beta" + betaStr + "EffectiveR_" + newBeta + "_New2.mat";
+if saveFile == 1
+    save(fileName);
+end

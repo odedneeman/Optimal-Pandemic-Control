@@ -8,6 +8,9 @@ function ret = discreteOptimization(newParams, saveFileName)
     sigma = 1/3;
     theta = 1/11;
     delta = 0.008;
+    if newParams.isKey("delta")
+        delta = newParams("delta");
+    end
     gamma = 1/4;
     % Gumbel distribution
     global muTv;
@@ -74,15 +77,16 @@ function ret = discreteOptimization(newParams, saveFileName)
     x0 = [0.9999; 0.00005; 0.00005; 0; 0; 0];
     simulationDt = 0.01;
     finalTime = 635;
-    if newParams.isKey("muTv")
-        confidentialEqn = @(x)(getGumbelCDF(x) - 0.99);
-        confidentialBound = fsolve(confidentialEqn, 500);
-        finalTime = ceil(confidentialBound);
-    end
+    % changing finalTime to match confident bound for gumble dist.
+    % if newParams.isKey("muTv")
+    %     confidentialEqn = @(x)(getGumbelCDF(x) - 0.99);
+    %     confidentialBound = fsolve(confidentialEqn, 500);
+    %     finalTime = ceil(confidentialBound);
+    % end
     finalStep = round(finalTime / simulationDt);
     timeList = 0 : simulationDt : finalTime;
     fixedStepsize = 0.01;
-    maxIter = 90;
+    maxIter = 90; %def 90
     
     xList = zeros(6, finalStep + 1); 
     xList(:,1) = x0;
@@ -93,8 +97,21 @@ function ret = discreteOptimization(newParams, saveFileName)
     nList = ones(1, finalStep + 1);
     
     
-    t1 = [200, 450];
-    n1 = [0.6, 0.7, 0.8];
+    %t1 = [200, 450]; %was def
+    %n1 = [0.6, 0.7, 0.8]; %was def
+    %t1 = [300, 400]; %def for benchmark
+    %t1 = [200, 400]; %new def
+    t1 = [150, 350];
+    %t1 = [150, 400];
+    %t1 = [300, 450];
+    %n1 = [0.9, 0.7, 0.9]; %new def
+    n1 = [0.8, 0.8, 0.9]; %for betaN=0.4, 0.6, tV=500,520,600
+    %n1 = [0.871167022022223, 0.872933608119833, 0.910999137883876];
+    %n1 = [0.8, 0.75, 0.85]; %for betaW=0.45
+    %n1 = [0.75, 0.75, 0.85];
+
+    initialN1 = n1;
+    initialT1 = t1;
     costList = zeros(1, maxIter);
     
     switchingArmijoBeta = 0.5;
@@ -110,7 +127,7 @@ function ret = discreteOptimization(newParams, saveFileName)
         disp(n1)
         disp(t1)
         zigzagCount = zigzagCount + 1;
-        if zigzagCount == 30
+        if zigzagCount == 30 %def = 30
             zigzagCount = 0;
             zigzagState = 1 - zigzagState;
         end

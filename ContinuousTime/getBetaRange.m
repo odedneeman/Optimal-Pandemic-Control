@@ -13,7 +13,7 @@ function ret = getBetaRange(curTime, x)
     curEndo = curKappa * delta * theta * R;
     maxNWithEndo = maxN - curEndo;
     if maxNWithEndo < minN
-        disp("Endo response error!");
+        %disp("Endo response error!");
         maxNWithEndo = minN;
     end
     maxBeta = getBetaFromN(maxNWithEndo, curTime);

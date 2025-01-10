@@ -36,4 +36,5 @@ function ret = costFunction(x, beta, curTime)
         + log(1 - endoResponse)) ...
         + (D + phi * I) * (log(w) - 0.2) + chi * delta * theta * R);
 
+
 end

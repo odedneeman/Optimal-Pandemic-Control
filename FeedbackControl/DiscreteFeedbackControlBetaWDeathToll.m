@@ -83,7 +83,7 @@ feedbackNList = zeros(1, finalStep);
 feedbackNList(1) = referenceNList(1);
 
 % change the parameter
-betaW = 0.6;
+betaW = 0.45;
 
 % first simulate the system 
 
@@ -236,15 +236,27 @@ controllerKiDiscrete = 0;
 lastError = 0;
 last2Error = 0;
 
+% errorThreshold = 0.000008;
+% inputThreshold = 0.05; 
+% dwellThreshold = 14;
+% policyChangeList = 0;
+
 errorThreshold = 0.000008;
-inputThreshold = 0.05; 
+inputThresholdBase = 0.1;
+inputThresholdDecay = 0.001; % Per day. def now = 0.0015 or 0.001
+inputThresholdMin = 0.05; %def now = 0.02 or 0.03
 dwellThreshold = 14;
+dwellThresholdIncrease = 1/1000;  % Per step. so per day it's *(1/dt) = *100
+lastSwitch = 0;
 policyChangeList = 0;
 % run simulation
 for curStep = 1 :finalStep
     curTime = (curStep - 1) * simulationDt;
     curState = xList(:, curStep);
-
+    dwellThreshold = dwellThreshold + dwellThresholdIncrease;
+    daysSinceSwitch = (curStep - lastSwitch) *simulationDt;
+    inputThreshold = max(inputThresholdBase - (daysSinceSwitch * inputThresholdDecay),...
+        inputThresholdMin); 
     curKappa = getTVKappa(curTime);
     R = curState(4);
     curEndo = curKappa * delta * theta * R;
@@ -324,6 +336,9 @@ for curIndex = 2 : length(policyChangeList)
     policyChangeGap = [policyChangeGap, gap * simulationDt];
 end
 disp(policyChangeGap)
+discreteXList = xList;
+discreteNList = trueNList;
+discreteBetaList = betaList;
 figure(1);
 plot(timeList, xList(5, :) * 100000);
 figure(2);
@@ -363,4 +378,8 @@ legend(["Real system \beta_W = " + string(betaW), ...
     "Controlled system (discrete, death toll) \beta_W = " + string(betaW),...
     "Optimal effective R for \beta_W = " + string(betaW)])
 
-
+xList = discreteXList;
+betaList = discreteBetaList;
+nList = discreteNList;
+fileName = "./matResults/betaWDeathToll_" + betaW + "_new.mat";
+save(fileName);
