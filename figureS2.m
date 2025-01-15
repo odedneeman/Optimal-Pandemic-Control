@@ -80,7 +80,7 @@ set(gca, 'YScale', 'log');
 ytickformat('%,.0f');
 
 figure(5)
-title("Accumulated Harm");
+title("Accumulated Welfare Loss");
 xlim([0,finalTime]);
 ylim([0, 24]);
 legend(runNames);

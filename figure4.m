@@ -1,4 +1,5 @@
 % This is figure 4 - which demonstrates the robustness of the feedback control
+% This script also creates Figure S4, by switching paramType to "betaN"
 close all;
 robColor = [108, 0, 122] / 255; % purple
 feedbackColor = [99, 193, 50] / 255; % green
@@ -8,7 +9,7 @@ notCombined = 0;
 extraFigure = 1;
 fileName = "difference_from_opt_plot_betaW_31.7.png";
 writeFile = 0;
-paramType = "betaW";
+paramType = "betaN";
 
 
 benchmarkParam = 0.376;
@@ -148,7 +149,7 @@ plot(xlim, [0, 0], 'k--'); % Horizontal line at y = 0
 %legend("Optimal Benchmark Policy", "Feedback Control")
 xlabel(xlabelStr)
 %ylabel("Harm Difference from Optimal Policy, in % of equivalent consumption loss (Harm in reality - Optimal)")
-ylabel({"Difference in harm vs optimum", "(% of equivalent consumption loss)"});
+ylabel({"Difference in welfare loss vs optimum", "(% of equivalent consumption loss)"});
 xlim([paramList(1),paramList(end)]);
 if paramType == "betaN"
     ylim([-0.5, 3.2]);

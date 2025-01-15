@@ -13,6 +13,8 @@ betaW45Color  = 'r';
 getLegend = 1;
 lineWidth = 2;
 
+y_label = {"Welfare loss (% of equivalent", "consumption loss)"};
+
 runTypes = {'No Policy', 'Optimal Fixed Policy', 'Optimal Stepwise Policy', 'Optimal Continuous Policy', 'Maximum Employment Reduction'};
 fullLockdownIndex = 15;
 noInterventionIndex = 65;
@@ -115,7 +117,7 @@ for i = 1:numBars
 end
 
 hold off;                 
-ylabel("Harm");
+ylabel(y_label);
 ylim([0,27]);
 xticks([]);     
 xticklabels([]);
@@ -153,7 +155,7 @@ for i = 1:numBars
          'Color', betaW376Color, 'LineWidth', lineWidth);
 end
 hold off;                 
-ylabel("Harm");
+ylabel(y_label);
 ylim([0,27]);
 xticks([]);     
 xticklabels([]);   
@@ -189,7 +191,7 @@ for i = 1:numBars
          'Color', betaW3Color, 'LineWidth', lineWidth);
 end
 
-ylabel("Harm");
+ylabel(y_label);
 ylim([0,27]);
 xticks([]);     
 xticklabels([]);

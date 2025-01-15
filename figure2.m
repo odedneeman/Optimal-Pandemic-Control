@@ -14,8 +14,8 @@ close all;
 figureType = 1; 
 fileName = "narrative_plot_range_betaN_logScaleDeathToll_13.6.png";
 writeFile = 0;
-getLegend = 1;
-paramType = "betaN";
+getLegend = 0;
+paramType = "betaW";
 asterisk_legend = 0;
 lineWidth = 2;
 fontSize = 15;
@@ -86,7 +86,7 @@ if figureType == 1
     legendNames2 = {"Benchmark"};
     legendNames3 = {};
     xlabel("Employment Reduction (in %)");
-    ylabel({"Harm (% of equivalent", "consumption loss)"});
+    ylabel({"Welfare loss (% of equivalent", "consumption loss)"});
     xlim([0, 32]);
     ylim([0, 30]);
     if paramType == "betaN"
@@ -151,7 +151,7 @@ if figureType == 1
     if getLegend==1
         figure(1)
         fig = gcf;
-        legendNames1 = {"Low Disease Transmission", "Medium Disease Transmission (COVID value)", "High Disease Transmission"};
+        legendNames1 = {"Low Disease Transmission", "Medium Disease Transmission", "High Disease Transmission"};
         legend(legendNames1, 'Location', 'southoutside', 'fontsize', 8);
     end
 
