@@ -16,3 +16,4 @@ This repository contains the MATLAB code used to generate the results and plots 
 *	**FeedbackControl**: Contains code for policy optimizations and simulations using a feedback control algorithm.
 *	**accumHarm**: Conatins some results of welfare loss across diseases and policies.
 
+The code was developed using MATLAB R2023a and MATLAB R2023b
